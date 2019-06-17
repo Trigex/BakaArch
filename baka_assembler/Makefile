@@ -1,16 +1,16 @@
-all: baka_arch
+all: baka_assembler
 
 CC = gcc
 WARNINGS = -Wall
 DEBUG = -ggdb -fno-omit-frame-pointer
 OPTIMIZE = -O2
-FILES = baka_arch.c emulator.h emulator.c
+FILES = baka_assembler.c io.h io.c parser.h parser.c
 
-baka_arch: Makefile $(FILES)
-	$(CC) -o $@ $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(FILES)
+baka_assembler: Makefile $(FILES)
+	$(CC) -o assembler $(WARNINGS) $(DEBUG) $(OPTIMIZE) $(FILES)
 
 clean:
-	rm -f baka_arch
+	rm -f baka_assembler
 
 # Builder will call this to install the application before running.
 install:
@@ -18,4 +18,4 @@ install:
 
 # Builder uses this target to run your application.
 run:
-	./baka_arch
+	./baka_assembler

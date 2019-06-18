@@ -45,6 +45,7 @@ void start_emulator(emulator* emu)
     emu->running = 1;
     while(emu->running == 1)
     {
+        printf("\e[1;1H\e[2J");
         emulate_cycle(emu);
         print_registers(emu);
         fgetc(stdin);
@@ -59,6 +60,7 @@ void emulate_cycle(emulator* emu)
     unsigned char reg_flag = 0;
     unsigned char reg_label = 0;
     unsigned char value = 0;
+    printf("Operation: ");
     switch(emu->opcode)
     {
         case 0x0: // NOP
@@ -232,11 +234,12 @@ void destroy_emulator(emulator* emu)
 
 void print_registers(emulator *emu)
 {
+    printf("Registers\n=========\n");
     for(int i=0;i<sizeof(emu->r);i++)
     {
-        printf("r%x: %x\n", i, emu->r[i]);
+        printf("r%x: 0x%x\n", i, emu->r[i]);
     }
 
     printf("pc: 0x%x\n", emu->pc);
-    printf("cmp: %x\n", emu->cmp);
+    printf("cmp: %d\n", emu->cmp);
 }

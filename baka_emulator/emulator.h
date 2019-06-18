@@ -6,7 +6,7 @@ typedef struct emulator
 {
     unsigned short pc; // program counter (value from 0x000 to 0xFFF)
     unsigned char cmp; // comparison result
-    unsigned char r[5]; // 6 general purpose 8 bit registers
+    unsigned char r[7]; // 6 general purpose 8 bit registers
     unsigned char memory[MEMORY]; // 4095 bytes of memory
     unsigned char opcode; // the current base opcode
     unsigned short operands[2]; // up to three opcode operands

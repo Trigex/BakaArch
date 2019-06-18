@@ -2,12 +2,19 @@
 #include <stdlib.h>
 #include "emulator.h"
 
-unsigned char* load_binary_into_buffer(char* path)
+void print_buffer(unsigned char* buf, long buf_size)
+{
+    for(int i=0;i<buf_size;i++)
+    {
+        printf("%d: %x\n", i, *(buf+i));
+    }
+}
+
+long load_binary_into_buffer(char* path, unsigned char** buf)
 {
     FILE *fp;
     long file_size;
     int buf_read_cnt;
-    unsigned char* buf;
 
     // get file to load
     fp = fopen(path, "rb"); // open file in binary read mode
@@ -18,39 +25,37 @@ unsigned char* load_binary_into_buffer(char* path)
         fseek(fp, 0, SEEK_END);
         file_size = ftell(fp);
         rewind(fp);
-        printf("File size: %lu\n", file_size);
 
         // allocate memory for buffer
-        buf = malloc(file_size * sizeof(unsigned char));
+        *buf = calloc(file_size, sizeof(unsigned char));
 
         if(buf == NULL)
         {
             printf("Buffer memory allocation failed!\n");
-            return NULL;
+            return 0;
         }
 
         // read
-        buf_read_cnt = fread(buf, sizeof(unsigned char), file_size, fp);
+        buf_read_cnt = fread(*buf, sizeof(unsigned char), file_size, fp);
 
         if(buf_read_cnt != file_size)
         {
             printf("Reading error occured...!\n");
-            return NULL;
+            return 0;
         }
-        printf("Buffer read count: %i\n", buf_read_cnt);
         fclose(fp);
-
-        return buf;
+        return file_size;
     } else 
     {
         printf("File not found...\n");
-        return NULL;
+        return 0;
     }
 }
 
 int main(int argc, char *argv[])
 {
-    unsigned char* buf;
+    unsigned char* buf = NULL;
+    long buf_size = 0;
     emulator* emu = NULL;
 
     if(argc < 2)
@@ -59,26 +64,28 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    buf = load_binary_into_buffer(argv[1]);
+    buf_size = load_binary_into_buffer(argv[1], &buf);
+
+    if(buf_size == 0)
+        return 1;
 
     if(buf == NULL)
     {
+        printf("The file couldn't be loaded!\n");
         return 1;
     }
 
     // create emulator
     emu = create_emulator();
     // load binary into memory
-    load_binary(emu, buf);
+    load_binary(emu, buf, buf_size);
 
     // free buffer
     free(buf);
-    // debug print program memory (sorry 0x0!)
-    print_memory(emu);
+    // start emulator
     start_emulator(emu);
-    
-    // free emulator
-    free(emu);
+    // destroy once loop has stopped
+    destroy_emulator(emu);
 
     return 0;
 }

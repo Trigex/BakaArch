@@ -54,3 +54,20 @@ char *sgets(char *s, int n, const char **strp){
         s[i] = '\0';
     return s;
 }
+
+int hex2int(char* hex)  
+{
+    int result=0;
+
+    while ((*hex)!='\0')
+    {
+        if (('0'<=(*hex))&&((*hex)<='9'))
+            result = result*16 + (*hex) -'0';
+        else if (('a'<=(*hex))&&((*hex)<='f'))
+            result = result*16 + (*hex) -'a'+10;
+        else if (('A'<=(*hex))&&((*hex)<='F'))
+            result = result*16 + (*hex) -'A'+10; 
+        hex++;
+    }
+    return(result);
+}

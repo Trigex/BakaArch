@@ -7,8 +7,8 @@ emulator* create_emulator()
     emu->pc = 0x000;
     emu->opcode = 0;
     emu->cmp = 0;
-    emu->bin_size = 0;
-    emu->running = 1;
+    emu->running = 0;
+    emu->debug = 1;
 
     // clear memory
     for(int i=0;i<sizeof(emu->memory);i++)
@@ -22,165 +22,214 @@ emulator* create_emulator()
         emu->r[i] = 0;
     }
 
-    // clear args
-    for(int i=0;i<sizeof(emu->args);i++)
+    // clear operands
+    for(int i=0;i<sizeof(emu->operands);i++)
     {
-        emu->args[i] = 0;
+        emu->operands[i] = 0;
     }
 
     return emu;
 }
 
-void load_binary(emulator* emu, unsigned char* buf)
+void load_binary(emulator* emu, unsigned char* buf, int buf_length)
 {
-    // fill memory with binary starting at 0x000
-    for(int i=0;i<18;i++)
+    for(int i=0;i<buf_length;i++)
     {
-        emu->memory[i] = buf[i];
-        printf("load: %x\n", emu->memory[i]);
+        emu->memory[i] = *(buf + i);
+        printf("0x%x: 0x%x\n", i, emu->memory[i]);
     }
 }
 
 void start_emulator(emulator* emu)
 {
-    printf("location: %x", emu->memory[0xa]);
-    emu->running = 0;
-    while(emu->running == 0)
+    emu->running = 1;
+    while(emu->running == 1)
     {
         emulate_cycle(emu);
-        fgetc(stdin);
+        print_registers(emu);
+        //fgetc(stdin);
     }
 }
 
 void emulate_cycle(emulator* emu)
 {
-    int inc_cnt = 0; // amount to increment pc by at end of cycle
+    int inc_cnt = 0; // how many bytes to increment by at the cycle's end
     // get opcode
     emu->opcode = emu->memory[emu->pc];
-    // opcode table, set args depending on opcode
-    printf("0x%x:\n", emu->pc);
+    unsigned char reg_flag = 0;
+    unsigned char reg_label = 0;
+    unsigned char value = 0;
     switch(emu->opcode)
     {
-        case 0x3: // LD, arg0 = register, arg1 = value (3 bytes in all)
-            inc_cnt = 3;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            emu->args[1] = emu->memory[emu->pc+2]; // arg1
-            printf("LD: 0x%x, 0x%x\n", emu->args[0], emu->args[1]);
-            emu->r[emu->args[0]] = emu->args[1]; // set register to value argument
-            break;
-        case 0x1: // ADD, arg0 = register, arg1 = value
-            inc_cnt = 3;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            emu->args[1] = emu->memory[emu->pc+2]; // arg1
-            printf("ADD: 0x%x, 0x%x\n", emu->args[0], emu->args[1]);
-            emu->r[emu->args[0]] += emu->args[1]; // add
-            break;
-        case 0x2: // SUB, arg0 = register, arg1 = value
-            inc_cnt = 3;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            emu->args[1] = emu->memory[emu->pc+2]; // arg1
-            printf("SUB: 0x%x, 0x%x\n", emu->args[0], emu->args[1]);
-            emu->r[emu->args[0]] -= emu->args[1]; // sub
-            break;
-        case 0xc: // OUT, arg0 = value
-            inc_cnt = 2;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            printf("OUT: 0x%x\n", emu->args[0]);
-            printf("%x\n", emu->r[emu->args[0]]);
-            break;
-        case 0x4: // JMP, arg0 = address
-            inc_cnt = 0;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            printf("JMP: 0x%x\n", emu->args[0]);
-            emu->pc = emu->args[0];
-            break;
         case 0x0: // NOP
             inc_cnt = 1;
             printf("NOP\n");
             break;
-        case 0x5: // CMP, arg0 = register, arg1 = register
+        case 0x1: // ADD
+            reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
+            if(reg_flag != 0xff) {printf("Invalid register argument!\n"); break;}
+            reg_label = emu->memory[emu->pc+2]; // register number (0x1)
+            if(emu->memory[emu->pc+3] == 0xff) // register value supplied
+            {
+                value = emu->r[emu->memory[emu->pc+4]]; // set value to value of supplied register
+                inc_cnt = 5; // 5 byte instruction
+            } else // 8 bit number value supplied 
+            {
+                value = emu->memory[emu->pc+3]; // set value to next byte
+                inc_cnt = 4; // 4 byte instruction
+            }
+            
+            // add
+            emu->r[reg_label] += value;
+            printf("ADD: r%x, 0x%x\n", reg_label, value);
+            break;
+        case 0x2: // SUB
+            reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
+            if(reg_flag != 0xff) {printf("Invalid register argument!\n"); break;}
+            reg_label = emu->memory[emu->pc+2]; // register number (0x1)
+            if(emu->memory[emu->pc+3] == 0xff) // register value supplied
+            {
+                value = emu->r[emu->memory[emu->pc+4]]; // set value to value of supplied register
+                inc_cnt = 5; // 5 byte instruction
+            } else // 8 bit number value supplied 
+            {
+                value = emu->memory[emu->pc+3]; // set value to next byte
+                inc_cnt = 4; // 4 byte instruction
+            }
+            
+            // add
+            emu->r[reg_label] -= value;
+            printf("SUB: r%x, 0x%x\n", reg_label, value);
+            //inc_cnt = 4;
+            break;
+        case 0x3: // LD
+            reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
+            if(reg_flag != 0xff) {printf("Invalid register argument!\n"); break;}
+            reg_label = emu->memory[emu->pc+2]; // register number (0x1)
+            if(emu->memory[emu->pc+3] == 0xff) // register value supplied
+            {
+                value = emu->r[emu->memory[emu->pc+4]]; // set value to value of supplied register
+                inc_cnt = 5; // 5 byte instruction
+            } else // 8 bit number value supplied 
+            {
+                value = emu->memory[emu->pc+3]; // set value to next byte
+                inc_cnt = 4; // 4 byte instruction
+            }
+            
+            emu->r[reg_label] = value;
+            printf("LD: r%x, 0x%x\n", reg_label, value);
+            break;
+        case 0x4: // JMP
+            inc_cnt = 0;
+            emu->pc = emu->memory[emu->pc+1];
+            printf("JMP: 0x%x\n", emu->memory[emu->pc+1]);
+            break;
+        case 0x5: // CMP
+            reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
+            if(reg_flag != 0xff) {printf("Invalid register argument!\n"); break;}
+            reg_label = emu->memory[emu->pc+2]; // register number (0x1)
+            if(emu->memory[emu->pc+3] == 0xff) // register value supplied
+            {
+                value = emu->r[emu->memory[emu->pc+4]]; // set value to value of supplied register
+                inc_cnt = 5; // 5 byte instruction
+            } else // 8 bit number value supplied 
+            {
+                value = emu->memory[emu->pc+3]; // set value to next byte
+                inc_cnt = 4; // 4 byte instruction
+            }
+
+            if(emu->r[reg_label] == value) {emu->cmp = 0;}
+            else if(emu->r[reg_label] != value) {emu->cmp = 3;}
+            else if(emu->r[reg_label] > value) {emu->cmp = 1;}
+            else if(emu->r[reg_label] < value) {emu->cmp = 2;}
+
+            printf("CMP: r%x, 0x%x\n", reg_label, value);
+            break;
+        case 0x6: // JE
+            value = emu->memory[emu->pc+1];
+            if(emu->cmp == 0) {emu->pc = value; inc_cnt = 0;}
+            else {inc_cnt = 2;}
+            break;
+        case 0x7: // JNE
+            value = emu->memory[emu->pc+1];
+            printf("JNE: 0x%x\n", value);
+            if(emu->cmp == 3) {emu->pc = value; inc_cnt = 0; printf("Jumped to 0x%x\n", value);}
+            else {inc_cnt = 2;}
+            break;
+        case 0x8: // JGT
+            value = emu->memory[emu->pc+1];
+            if(emu->cmp == 1) {emu->pc = value; inc_cnt = 0;}
+            else {inc_cnt = 2;}
+            break;
+        case 0x9: // JLT
+            value = emu->memory[emu->pc+1];
+            if(emu->cmp == 2) {emu->pc = value; inc_cnt = 0;}
+            else {inc_cnt = 2;}
+            break;
+        case 0xa: // INC
+            reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
+            if(reg_flag != 0xff) {printf("Invalid register argument!\n"); break;}
+            reg_label = emu->memory[emu->pc+2]; // register number (0x1)
+
+            emu->r[reg_label] += 1;
             inc_cnt = 3;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            emu->args[1] = emu->memory[emu->pc+2]; // arg1
-            printf("CMP: 0x%x, 0x%x\n", emu->args[0], emu->args[1]);
-            if(emu->r[emu->args[0]] == emu->r[emu->args[1]]) { // equal to
-                emu->cmp = 0;
-            } else if(emu->r[emu->args[0]] > emu->r[emu->args[1]]) { // greater than
-                emu->cmp = 1;
-            } else if(emu->r[emu->args[0]] < emu->r[emu->args[1]]) // less than
+            printf("INC: r%x\n", reg_label);
+            break;
+        case 0xb: // DEINC
+            reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
+            if(reg_flag != 0xff) {printf("Invalid register argument!\n"); break;}
+            reg_label = emu->memory[emu->pc+2]; // register number (0x1)
+
+            emu->r[reg_label] -= 1;
+            inc_cnt = 3;
+            printf("DEINC: r%x\n", reg_label);
+            break;
+        case 0xc: // PRINT
+            if(emu->memory[emu->pc+1] == 0xff) // register value supplied
             {
-                emu->cmp = 2;
+                value = emu->r[emu->memory[emu->pc+2]]; // set value to value of supplied register
+                inc_cnt = 3; // 3 byte instruction
+            } else // 8 bit number value supplied 
+            {
+                value = emu->memory[emu->pc+1]; // set value to next byte
+                inc_cnt = 2; // 2 byte instruction
             }
-            break;
-        case 0xa: // INC, arg0 = register
-            inc_cnt = 2;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            emu->r[emu->args[0]] += 1;
-            printf("INC: 0x%x\n", emu->args[0]);
-            break;
-        case 0xb: // DEINC, arg0 = register
-            inc_cnt = 2;
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            emu->r[emu->args[0]] -= 1;
-            printf("DEINC: 0x%x\n", emu->args[0]);
-            break;
-        case 0x6: // JE (jump equal), arg0 = address
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            printf("JE: 0x%x\n", emu->args[0]);
-            if(emu->cmp == 0)
-            {
-                emu->pc = emu->args[0];
-                inc_cnt = 0;
-            } else
-            {
-                inc_cnt = 2;
-            }
-            break;
-        case 0x8: // JGT (jump greater than), arg0 = address
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            printf("JGT: 0x%x\n", emu->args[0]);
-            if(emu->cmp == 1)
-            {
-                emu->pc = emu->args[0];
-                inc_cnt = 0;
-            } else
-            {
-                inc_cnt = 2;
-            }
-            break;
-        case 0x9: // JLT (jump less than), arg0 = address
-            emu->args[0] = emu->memory[emu->pc+1]; // arg0
-            printf("JLT: 0x%x\n", emu->args[0]);
-            if(emu->cmp == 2)
-            {
-                emu->pc = emu->args[0];
-                inc_cnt = 0;
-            } else
-            {
-                inc_cnt = 2;
-            }
+
+            printf("PRINT: %d\n", value);
+
             break;
         case 0xd: // HALT
+            inc_cnt = 0;
+            emu->running = 0;
             printf("HALT\n");
-            emu->running = 1;
             break;
         default:
             printf("Unknown Opcode: 0x%x\n", emu->opcode);
+            inc_cnt = 1;
             break;
     }
 
     emu->pc += inc_cnt;
+    //printf("Incremented PC by 0x%x\n", inc_cnt);
 }
 
-void stop_emulator(emulator* emu)
+void destroy_emulator(emulator* emu)
+{
+    free(emu);
+}
+
+void set_operands(emulator *emu, int opr_cnt)
 {
 
 }
 
-void print_memory(emulator *emu)
+void print_registers(emulator *emu)
 {
-    for(int i=0;i<18;i++)
+    for(int i=0;i<sizeof(emu->r);i++)
     {
-        printf("0x%x\n", emu->memory[i]);
+        printf("r%x: %x\n", i, emu->r[i]);
     }
+
+    printf("pc: 0x%x\n", emu->pc);
+    printf("cmp: %x\n", emu->cmp);
 }

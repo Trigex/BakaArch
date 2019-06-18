@@ -3,3 +3,4 @@
 
 char* read_file_into_string(char* path);
 char *sgets(char *s, int n, const char **strp);
+int hex2int(char* hex);

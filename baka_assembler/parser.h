@@ -3,4 +3,10 @@
 #include <string.h>
 #include "io.h"
 
-unsigned char* parse_basm_into_binary(char* basm);
+typedef struct label 
+{
+    unsigned short address;
+    char *label;
+} label;
+
+long parse_basm_into_binary(const char* basm, unsigned char** buf);

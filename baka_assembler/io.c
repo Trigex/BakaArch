@@ -25,16 +25,24 @@ char* read_file_into_string(char* path)
         read_size = fread(buf, 1, file_size, fp);
         if(read_size != file_size)
         {
-            printf("The file did not completely read!");
+            printf("The file did not completely read!\n");
             return NULL;
         }
 
         fclose(fp);
         return buf;
     } else {
-         printf("Could not open file");
+         printf("Could not open file\n");
          return NULL;
     }
+}
+
+void create_file_and_write_binary(char* path, unsigned char* bin, long bin_size)
+{
+    FILE *fp;
+    fp = fopen(path, "wb");
+    fwrite(bin, bin_size, 1, fp);
+    fclose(fp);
 }
 
 char *sgets(char *s, int n, const char **strp){
@@ -55,9 +63,9 @@ char *sgets(char *s, int n, const char **strp){
     return s;
 }
 
-int hex2int(char* hex)  
+unsigned char str2hex(char* hex)  
 {
-    int result=0;
+    unsigned char result=0;
 
     while ((*hex)!='\0')
     {
@@ -70,4 +78,14 @@ int hex2int(char* hex)
         hex++;
     }
     return(result);
+}
+
+void remove_char(char *s, char c)
+{
+    int j, n = strlen(s); 
+    for (int i=j=0; i<n; i++) 
+       if (s[i] != c) 
+          s[j++] = s[i]; 
+      
+    s[j] = '\0'; 
 }

@@ -36,7 +36,7 @@ void load_binary(emulator* emu, unsigned char* buf, int buf_length)
     for(int i=0;i<buf_length;i++)
     {
         emu->memory[i] = *(buf + i);
-        printf("0x%x: 0x%x\n", i, emu->memory[i]);
+        if(emu->debug == 1){printf("0x%x: 0x%x\n", i, emu->memory[i]);}
     }
 }
 
@@ -47,7 +47,7 @@ void start_emulator(emulator* emu)
     {
         emulate_cycle(emu);
         print_registers(emu);
-        //fgetc(stdin);
+        fgetc(stdin);
     }
 }
 
@@ -63,7 +63,7 @@ void emulate_cycle(emulator* emu)
     {
         case 0x0: // NOP
             inc_cnt = 1;
-            printf("NOP\n");
+            if(emu->debug == 1){printf("NOP\n");}
             break;
         case 0x1: // ADD
             reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
@@ -81,7 +81,7 @@ void emulate_cycle(emulator* emu)
             
             // add
             emu->r[reg_label] += value;
-            printf("ADD: r%x, 0x%x\n", reg_label, value);
+            if(emu->debug == 1){printf("ADD: r%x, 0x%x\n", reg_label, value);}
             break;
         case 0x2: // SUB
             reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
@@ -97,9 +97,9 @@ void emulate_cycle(emulator* emu)
                 inc_cnt = 4; // 4 byte instruction
             }
             
-            // add
+            // sub
             emu->r[reg_label] -= value;
-            printf("SUB: r%x, 0x%x\n", reg_label, value);
+            if(emu->debug == 1){printf("SUB: r%x, 0x%x\n", reg_label, value);}
             //inc_cnt = 4;
             break;
         case 0x3: // LD
@@ -116,13 +116,14 @@ void emulate_cycle(emulator* emu)
                 inc_cnt = 4; // 4 byte instruction
             }
             
+            // load
             emu->r[reg_label] = value;
-            printf("LD: r%x, 0x%x\n", reg_label, value);
+            if(emu->debug == 1){printf("LD: r%x, 0x%x\n", reg_label, value);}
             break;
         case 0x4: // JMP
             inc_cnt = 0;
             emu->pc = emu->memory[emu->pc+1];
-            printf("JMP: 0x%x\n", emu->memory[emu->pc+1]);
+            if(emu->debug == 1){printf("JMP: 0x%x\n", emu->memory[emu->pc+1]);}
             break;
         case 0x5: // CMP
             reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
@@ -138,12 +139,24 @@ void emulate_cycle(emulator* emu)
                 inc_cnt = 4; // 4 byte instruction
             }
 
+            // equal
             if(emu->r[reg_label] == value) {emu->cmp = 0;}
-            else if(emu->r[reg_label] != value) {emu->cmp = 3;}
-            else if(emu->r[reg_label] > value) {emu->cmp = 1;}
-            else if(emu->r[reg_label] < value) {emu->cmp = 2;}
+            // less than
+            if(emu->r[reg_label] < value) {emu->cmp = 2;}
+            // not equal
+            if(emu->r[reg_label] != value) {emu->cmp = 3;}
+            // greater than
+            if(emu->r[reg_label] > value) {emu->cmp = 1;}
+            // not less than
+            if(!(emu->r[reg_label] < value)) {emu->cmp = 5;}
+            // not greater than
+            if(!(emu->r[reg_label] > value)) {emu->cmp = 4;}
+            //greater than or equal to
+            if(emu->r[reg_label] >= value) {emu->cmp = 6;}
+            // less than or equal to
+            if(emu->r[reg_label] <= value) {emu->cmp = 7;}
 
-            printf("CMP: r%x, 0x%x\n", reg_label, value);
+            if(emu->debug == 1){printf("CMP: r%x, 0x%x\n", reg_label, value);}
             break;
         case 0x6: // JE
             value = emu->memory[emu->pc+1];
@@ -152,7 +165,7 @@ void emulate_cycle(emulator* emu)
             break;
         case 0x7: // JNE
             value = emu->memory[emu->pc+1];
-            printf("JNE: 0x%x\n", value);
+            if(emu->debug == 1){printf("JNE: 0x%x\n", value);}
             if(emu->cmp == 3) {emu->pc = value; inc_cnt = 0; printf("Jumped to 0x%x\n", value);}
             else {inc_cnt = 2;}
             break;
@@ -173,7 +186,7 @@ void emulate_cycle(emulator* emu)
 
             emu->r[reg_label] += 1;
             inc_cnt = 3;
-            printf("INC: r%x\n", reg_label);
+            if(emu->debug == 1){printf("INC: r%x\n", reg_label);}
             break;
         case 0xb: // DEINC
             reg_flag = emu->memory[emu->pc+1]; // register flag (0xff)
@@ -182,7 +195,7 @@ void emulate_cycle(emulator* emu)
 
             emu->r[reg_label] -= 1;
             inc_cnt = 3;
-            printf("DEINC: r%x\n", reg_label);
+            if(emu->debug == 1){printf("DEINC: r%x\n", reg_label);}
             break;
         case 0xc: // PRINT
             if(emu->memory[emu->pc+1] == 0xff) // register value supplied
@@ -201,7 +214,7 @@ void emulate_cycle(emulator* emu)
         case 0xd: // HALT
             inc_cnt = 0;
             emu->running = 0;
-            printf("HALT\n");
+            if(emu->debug == 1){printf("HALT\n");}
             break;
         default:
             printf("Unknown Opcode: 0x%x\n", emu->opcode);
@@ -210,17 +223,11 @@ void emulate_cycle(emulator* emu)
     }
 
     emu->pc += inc_cnt;
-    //printf("Incremented PC by 0x%x\n", inc_cnt);
 }
 
 void destroy_emulator(emulator* emu)
 {
     free(emu);
-}
-
-void set_operands(emulator *emu, int opr_cnt)
-{
-
 }
 
 void print_registers(emulator *emu)

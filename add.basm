@@ -1,3 +1,4 @@
 ld r0, 3
 add r0, 5
-out r0
+print r0
+halt

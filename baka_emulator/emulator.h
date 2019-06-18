@@ -19,5 +19,4 @@ void load_binary(emulator* emu, unsigned char* buf, int buf_length);
 void start_emulator(emulator* emu);
 void emulate_cycle(emulator* emu);
 void destroy_emulator(emulator* emu);
-void set_operands(emulator *emu, int opr_cnt);
 void print_registers(emulator *emu);

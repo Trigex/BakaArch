@@ -38,6 +38,10 @@ cmp result values:
 
 5 = result was not less than
 
+6 = result was greater than or equal to
+
+7 = result was less than or equal to
+
 # Opcodes:
 Values can refer to either a raw value (like 0x1) or a register's value
 

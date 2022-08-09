@@ -1,6 +1,8 @@
 # BakaArch
 Silly little emulated computer architecture, just for fun
 
+I did not have a great understanding of how computer architectures actually tend to be designed when writing this, nor did I really have a great grasp on C. The code is terrible. But I'm gonna leave it up anyway because it's kinda funny :D
+
 # Registers:
 General purpose registers are represented as two succesive bytes, starting with 0xFF, then the register number
 
